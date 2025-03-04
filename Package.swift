@@ -10,6 +10,10 @@ let package = Package(
             name: "AsyncProcess",
             targets: ["AsyncProcess"]
         ),
+        .library(
+            name: "ProcessSpawnSync",
+            targets: ["ProcessSpawnSync"]
+        ),
     ],
     dependencies: [
         .package(url: "https://github.com/apple/swift-system", from: "1.3.0"),

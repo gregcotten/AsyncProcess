@@ -53,15 +53,57 @@ public struct PSProcessUnknownError: Error & CustomStringConvertible {
 }
 
 public final class PSProcess: Sendable {
+  enum PipeOrFileHandle: Sendable {
+    case pipe(Pipe)
+    case fileHandle(FileHandle)
+
+    init?(_ any: Any?) {
+      if let pipe = any as? Pipe {
+        self = .pipe(pipe)
+      } else if let fileHandle = any as? FileHandle {
+        self = .fileHandle(fileHandle)
+      } else {
+        return nil
+      }
+    }
+
+    var fileHandleForReading: FileHandle {
+      switch self {
+      case .pipe(let pipe):
+        return pipe.fileHandleForReading
+      case .fileHandle(let fileHandle):
+        return fileHandle
+      }
+    }
+
+    var fileHandleForWriting: FileHandle {
+      switch self {
+      case .pipe(let pipe):
+        return pipe.fileHandleForWriting
+      case .fileHandle(let fileHandle):
+        return fileHandle
+      }
+    }
+
+    var underlyingAsAny: Any {
+      switch self {
+      case .pipe(let pipe):
+        return pipe
+      case .fileHandle(let fileHandle):
+        return fileHandle
+      }
+    }
+  }
+
   struct State: Sendable {
     var executableURL: URL? = nil
     var currentDirectoryURL: URL? = nil
-    var arguments: [String] = []
+    var arguments: [String]? = nil
     var environment: [String: String] = [:]
     private(set) var pidWhenRunning: pid_t? = nil
-    var standardInput: Pipe? = nil
-    var standardOutput: Pipe? = nil
-    var standardError: Pipe? = nil
+    var standardInput: PipeOrFileHandle? = nil
+    var standardOutput: PipeOrFileHandle? = nil
+    var standardError: PipeOrFileHandle? = nil
     var terminationHandler: (@Sendable (PSProcess) -> ())? = nil
     private(set) var procecesIdentifier: pid_t? = nil
     private(set) var terminationStatus: (Process.TerminationReason, CInt)? = nil
@@ -109,7 +151,7 @@ public final class PSProcess: Sendable {
     }
     defer { cwd?.deallocate() }
 
-    let args = copyOwnedCTypedStringArray([pathString] + state.arguments)
+    let args = copyOwnedCTypedStringArray([pathString] + (state.arguments ?? []))
     defer {
       var index = 0
       var arg = args[index]
@@ -278,7 +320,7 @@ public final class PSProcess: Sendable {
     }
   }
 
-  public var arguments: [String] {
+  public var arguments: [String]? {
     get {
       self.state.withLockedValue { state in
         state.arguments
@@ -304,41 +346,41 @@ public final class PSProcess: Sendable {
     }
   }
 
-  public var standardOutput: Pipe? {
+  public var standardOutput: Any? {
     get {
       self.state.withLockedValue { state in
-        state.standardOutput
+        state.standardOutput?.underlyingAsAny
       }
     }
     set {
       self.state.withLockedValue { state in
-        state.standardOutput = newValue
+        state.standardOutput = .init(newValue)
       }
     }
   }
 
-  public var standardError: Pipe? {
+  public var standardError: Any? {
     get {
       self.state.withLockedValue { state in
-        state.standardError
+        state.standardError?.underlyingAsAny
       }
     }
     set {
       self.state.withLockedValue { state in
-        state.standardError = newValue
+        state.standardError = .init(newValue)
       }
     }
   }
 
-  public var standardInput: Pipe? {
+  public var standardInput: Any? {
     get {
       self.state.withLockedValue { state in
-        state.standardInput
+        state.standardInput?.underlyingAsAny
       }
     }
     set {
       self.state.withLockedValue { state in
-        state.standardInput = newValue
+        state.standardInput = .init(newValue)
       }
     }
   }

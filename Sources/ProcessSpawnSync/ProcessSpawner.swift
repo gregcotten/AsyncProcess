@@ -60,8 +60,8 @@ public final class PSProcess: Sendable {
     var environment: [String: String] = [:]
     private(set) var pidWhenRunning: pid_t? = nil
     var standardInput: Pipe? = nil
-    var standardOutput: FileHandle? = nil
-    var standardError: FileHandle? = nil
+    var standardOutput: Pipe? = nil
+    var standardError: Pipe? = nil
     var terminationHandler: (@Sendable (PSProcess) -> ())? = nil
     private(set) var procecesIdentifier: pid_t? = nil
     private(set) var terminationStatus: (Process.TerminationReason, CInt)? = nil
@@ -135,8 +135,8 @@ public final class PSProcess: Sendable {
         psfd_kind: PS_MAP_FD,
         psfd_parent_fd: state.standardInput?.fileHandleForReading.fileDescriptor ?? STDIN_FILENO
       ),
-      ps_fd_setup(psfd_kind: PS_MAP_FD, psfd_parent_fd: state.standardOutput?.fileDescriptor ?? STDOUT_FILENO),
-      ps_fd_setup(psfd_kind: PS_MAP_FD, psfd_parent_fd: state.standardError?.fileDescriptor ?? STDERR_FILENO),
+      ps_fd_setup(psfd_kind: PS_MAP_FD, psfd_parent_fd: state.standardOutput?.fileHandleForWriting.fileDescriptor ?? STDOUT_FILENO),
+      ps_fd_setup(psfd_kind: PS_MAP_FD, psfd_parent_fd: state.standardError?.fileHandleForWriting.fileDescriptor ?? STDERR_FILENO),
     ]
     let (pid, error) = psSetup.withUnsafeBufferPointer { psSetupPtr -> (pid_t, ps_error) in
       var config = ps_process_configuration_s(
@@ -304,7 +304,7 @@ public final class PSProcess: Sendable {
     }
   }
 
-  public var standardOutput: FileHandle? {
+  public var standardOutput: Pipe? {
     get {
       self.state.withLockedValue { state in
         state.standardOutput
@@ -317,7 +317,7 @@ public final class PSProcess: Sendable {
     }
   }
 
-  public var standardError: FileHandle? {
+  public var standardError: Pipe? {
     get {
       self.state.withLockedValue { state in
         state.standardError

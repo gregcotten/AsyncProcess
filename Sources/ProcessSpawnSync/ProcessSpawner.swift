@@ -227,6 +227,14 @@ public final class PSProcess: Sendable {
     source.resume()
   }
 
+  public func interrupt() {
+    _ = kill(processIdentifier, SIGINT)
+  }
+
+  public func terminate() {
+    _ = kill(processIdentifier, SIGTERM)
+  }
+
   public var processIdentifier: pid_t {
     self.state.withLockedValue { state in
       state.procecesIdentifier!

@@ -55,6 +55,7 @@ public struct PSProcessUnknownError: Error & CustomStringConvertible {
 public final class PSProcess: Sendable {
   struct State: Sendable {
     var executableURL: URL? = nil
+    var currentDirectoryURL: URL? = nil
     var arguments: [String] = []
     var environment: [String: String] = [:]
     private(set) var pidWhenRunning: pid_t? = nil
@@ -101,6 +102,13 @@ public final class PSProcess: Sendable {
     defer {
       path.deallocate()
     }
+
+    var cwd: UnsafeMutablePointer<CChar>? = nil
+    if let currentDirectoryPathString = state.currentDirectoryURL?.path.removingPercentEncoding {
+      cwd = copyOwnedCTypedString(currentDirectoryPathString)
+    }
+    defer { cwd?.deallocate() }
+
     let args = copyOwnedCTypedStringArray([pathString] + state.arguments)
     defer {
       var index = 0
@@ -135,7 +143,7 @@ public final class PSProcess: Sendable {
         psc_path: path,
         psc_argv: args,
         psc_env: envs,
-        psc_cwd: nil,
+        psc_cwd: cwd,
         psc_fd_setup_count: CInt(psSetupPtr.count),
         psc_fd_setup_instructions: psSetupPtr.baseAddress!,
         psc_new_session: false,
@@ -240,6 +248,19 @@ public final class PSProcess: Sendable {
     set {
       self.state.withLockedValue { state in
         state.executableURL = newValue
+      }
+    }
+  }
+
+  public var currentDirectoryURL: URL? {
+    get {
+      self.state.withLockedValue { state in
+        state.currentDirectoryURL
+      }
+    }
+    set {
+      self.state.withLockedValue { state in
+        state.currentDirectoryURL = newValue
       }
     }
   }

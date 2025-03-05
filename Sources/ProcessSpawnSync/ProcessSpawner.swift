@@ -99,7 +99,7 @@ public final class PSProcess: Sendable {
     var executableURL: URL? = nil
     var currentDirectoryURL: URL? = nil
     var arguments: [String]? = nil
-    var environment: [String: String] = [:]
+    var environment: [String: String]? = nil
     private(set) var pidWhenRunning: pid_t? = nil
     var standardInput: PipeOrFileHandle? = nil
     var standardOutput: PipeOrFileHandle? = nil
@@ -161,7 +161,8 @@ public final class PSProcess: Sendable {
         arg = args[index]
       }
     }
-    let envs = copyOwnedCTypedStringArray((state.environment.map { k, v in "\(k)=\(v)" }))
+    let environmentDictionary = state.environment ?? ProcessInfo.processInfo.environment
+    let envs = copyOwnedCTypedStringArray((environmentDictionary.map { k, v in "\(k)=\(v)" }))
     defer {
       var index = 0
       var env = envs[index]
@@ -341,7 +342,7 @@ public final class PSProcess: Sendable {
     }
   }
 
-  public var environment: [String: String] {
+  public var environment: [String: String]? {
     get {
       self.state.withLockedValue { state in
         state.environment
